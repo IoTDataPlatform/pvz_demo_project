@@ -58,10 +58,10 @@ const DeviceDetails = ({ device }: Props) => {
             </p>
 
             <p>
-                <strong>Последние данные (h/t):</strong> {formatTs(device.tsHt)}
+                <strong>Последние данные (h/t):</strong> {formatTs(device.tsHt! / 1000)}
             </p>
             <p>
-                <strong>Последнее состояние:</strong> {formatTs(device.tsState)}
+                <strong>Последнее состояние:</strong> {formatTs(device.tsState! / 1000)}
             </p>
         </div>
     );

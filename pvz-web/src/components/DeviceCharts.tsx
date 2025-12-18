@@ -211,6 +211,7 @@ const DeviceCharts = ({ envName, tenantId, deviceId }: Props) => {
                                 type="monotone"
                                 dataKey="tAvg"
                                 name="Температура"
+                                stroke="#60a5fa"
                                 dot={false}
                                 strokeWidth={3}
                             />
@@ -219,6 +220,7 @@ const DeviceCharts = ({ envName, tenantId, deviceId }: Props) => {
                                 type="monotone"
                                 dataKey="hAvg"
                                 name="Влажность"
+                                stroke="#34d399"
                                 dot={false}
                                 strokeWidth={3}
                             />
