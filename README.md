@@ -1,4 +1,4 @@
-# PVZ IoT Data Platform
+# IoT Data Platform - PVZ demo project
 
 Демо-кейс, показывающий сценарий работы IoT-платформы для сети датчиков.  
 
