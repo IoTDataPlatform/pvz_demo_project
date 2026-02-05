@@ -1,5 +1,21 @@
 # IoT Data Platform - PVZ demo project
 
+## Структура репозитория
+
+- `pvz-backend/` - **Spring Boot** REST API
+  - читает текущие данные из **Redis**
+  - читает историю и строит агрегации из **Postgres** (через JPA)
+- `pvz-web/` — **Vite + React (TypeScript)** UI
+  - карта + панель состояния + графики
+- `scripts/` — всё для запуска демо-стека
+  - `docker-compose.yml` — поднимает все сервисы
+  - `Makefile` — команды для топиков Kafka, коннекторов, Flink jobs
+  - `configs/*.json` — конфиги **Kafka Connect** коннекторов
+  - `flink-sql/*.sql` — **Flink SQL** джобы (обогащение/агрегации)
+  - `mqtt-emulator/` — Python-эмулятор устройств (MQTT)
+
+---
+
 Демо-кейс, показывающий сценарий работы IoT-платформы для сети датчиков.  
 
 Полный путь данных: **Устройства -> MQTT -> Kafka -> Flink -> Redis/Postgres -> Spring Boot API -> Web UI**
@@ -17,22 +33,6 @@
 - **Сводка за окно** + простая метрика “засухи” (streak низкой влажности)
 
 <img width="1794" height="1053" alt="Screenshot From 2025-12-17 20-52-03" src="https://github.com/user-attachments/assets/37381f97-549e-477b-82f4-b6e3bd80ed76" />
-
----
-
-## Структура репозитория
-
-- `pvz-backend/` - **Spring Boot** REST API
-  - читает текущие данные из **Redis**
-  - читает историю и строит агрегации из **Postgres** (через JPA)
-- `pvz-web/` — **Vite + React (TypeScript)** UI
-  - карта + панель состояния + графики
-- `scripts/` — всё для запуска демо-стека
-  - `docker-compose.yml` — поднимает все сервисы
-  - `Makefile` — команды для топиков Kafka, коннекторов, Flink jobs
-  - `configs/*.json` — конфиги **Kafka Connect** коннекторов
-  - `flink-sql/*.sql` — **Flink SQL** джобы (обогащение/агрегации)
-  - `mqtt-emulator/` — Python-эмулятор устройств (MQTT)
 
 ---
 
