@@ -38,6 +38,8 @@
 
 ## Инфраструктура и поток данных
 
+<img width="1361" height="492" alt="image" src="https://github.com/user-attachments/assets/7f744e7b-e0ef-4601-a0fc-007f74bc2b03" />
+
 ### Поднимаются через `scripts/docker-compose.yml`:
 
 **MQTT**
