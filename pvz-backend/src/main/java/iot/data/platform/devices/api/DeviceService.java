@@ -4,7 +4,6 @@ import iot.data.platform.devices.core.DeviceState;
 import iot.data.platform.devices.infra.RedisDeviceRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,31 +35,32 @@ public class DeviceService {
         return redisDeviceRepository.findDroughtSummary(env, tenantId);
     }
 
-    public List<RecentDeviceSnapshotResponse> getRecentSnapshots(
-            String env,
-            String tenantId
-    ) {
+    public List<RecentDeviceSnapshotResponse> getRecentSnapshots(String env, String tenantId) {
         List<DeviceState> states = redisDeviceRepository.findAllByTenant(env, tenantId);
-
         List<RecentDeviceSnapshotResponse> result = new ArrayList<>();
 
         for (DeviceState s : states) {
-            Long tsHt = s.tsHt();
-            Long tsState = s.tsState();
-
             long lastSeen = 0L;
-            if (tsHt != null) lastSeen = tsHt;
-            if (tsState != null) lastSeen = Math.max(lastSeen, tsState);
+
+            if (s.measurementTsMs() != null) {
+                lastSeen = Math.max(lastSeen, s.measurementTsMs());
+            }
+            if (s.stateIngestedAt() != null) {
+                lastSeen = Math.max(lastSeen, s.stateIngestedAt());
+            }
+            if (s.enrichedProcessingTsMs() != null) {
+                lastSeen = Math.max(lastSeen, s.enrichedProcessingTsMs());
+            }
 
             result.add(new RecentDeviceSnapshotResponse(
                     s.deviceId(),
                     lastSeen,
-                    s.t(),
-                    s.h(),
+                    s.temperature(),
+                    s.humidity(),
                     s.online(),
-                    s.rssi() == null ? null : s.rssi().intValue(),
+                    s.rssi(),
                     s.snr(),
-                    s.bat()
+                    s.battery()
             ));
         }
 

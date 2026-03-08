@@ -8,7 +8,7 @@ spring:
       port: 6379
 
   datasource:
-    url: jdbc:postgresql://localhost:5430/mqtt
+    url: jdbc:postgresql://localhost:5430/db
     username: app
     password: app
     driver-class-name: org.postgresql.Driver

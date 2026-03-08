@@ -22,11 +22,14 @@ services:
       MQTT_PORT: 1883
       ENVIRONMENTS: "prod"
       TENANTS: "tenant-1"
-      DEVICES: "device-001,device-002,device-003,device-004,device-005"
-      BACKFILL_FROM_YEAR: 2021
-      BACKFILL_INTERVAL_SEC: 3600
-      REALTIME_INTERVAL_SEC: 30
+      DEVICE_COUNT: 10
+      DEVICE_PREFIX: "device-"
+      BACKFILL_ENABLED: "false"
+      # BACKFILL_FROM_YEAR: 2021
+      # BACKFILL_INTERVAL_SEC: 3600
+      REALTIME_INTERVAL_SEC: 15
       DRYNESS_LEVEL: 36
+      # USELESS_PAYLOAD_BYTES: 0
     restart: unless-stopped
 
   mqttx-web:
@@ -152,6 +155,33 @@ services:
     ports:
       - "8080:8080"
 
+  sensor-normalizer:
+    build:
+      context: ../sensors-normalizer
+      dockerfile: Dockerfile
+    container_name: sensor-normalizer
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-schema-registry:
+        condition: service_healthy
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_URL: http://kafka-schema-registry:8081
+      APPLICATION_ID: sensor-normalizer
+
+      TOPIC_HUMIDITY_RAW: mqtt_humidity_raw
+      TOPIC_TEMPERATURE_RAW: mqtt_temperature_raw
+      TOPIC_LOCATION_RAW: mqtt_location_raw
+      TOPIC_STATE_RAW: mqtt_state_raw
+
+      TOPIC_HUMIDITY_OUT: sensor.humidity.v1
+      TOPIC_TEMPERATURE_OUT: sensor.temperature.v1
+      TOPIC_LOCATION_OUT: sensor.location.v1
+      TOPIC_STATE_OUT: sensor.state.v1
+      TOPIC_PARSE_ERRORS: sensor.parse.errors
+    restart: unless-stopped
+
   flink-jobmanager:
     image: flink:1.19.1-java17
     container_name: flink-jobmanager
@@ -184,14 +214,15 @@ services:
       - ./flink-lib/kafka-clients-3.7.1.jar:/opt/flink/lib/kafka-clients-3.7.1.jar:ro
       - ./flink-lib/flink-connector-jdbc-3.2.0-1.19.jar:/opt/flink/lib/flink-connector-jdbc-3.2.0-1.19.jar:ro
       - ./flink-lib/postgresql-42.7.4.jar:/opt/flink/lib/postgresql-42.7.4.jar:ro
-      - ./flink-sql/mqtt_enriched_temporal_join.sql:/opt/flink/sql/mqtt_enriched_temporal_join.sql:ro
+      - ./flink-sql/mqtt_enriched.sql:/opt/flink/sql/mqtt_enriched.sql:ro
+      - ./flink-sql/mqtt_measurement.sql:/opt/flink/sql/mqtt_measurement.sql:ro
       - ./flink-sql/mqtt_resent_summary.sql:/opt/flink/sql/mqtt_resent_summary.sql:ro
     depends_on:
       kafka:
         condition: service_healthy
       kafka-schema-registry:
         condition: service_healthy
-      postgres-mqtt:
+      pvz-db:
         condition: service_healthy
 
   flink-taskmanager:
@@ -225,19 +256,20 @@ services:
     depends_on:
       - flink-jobmanager
 
-  postgres-mqtt:
-    image: postgis/postgis:18-3.6
-    container_name: postgres-mqtt
+  pvz-db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: pvz-db
     environment:
-      POSTGRES_DB: mqtt
+      POSTGRES_DB: db
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
     ports:
       - "5430:5432"
     volumes:
-      - postgres-data-rt:/var/lib/postgresql-mqtt
+      - postgres-data-rt:/var/lib/postgresql/data
+      - ./db-init/001_timescale_init.sql:/docker-entrypoint-initdb.d/001_timescale_init.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U app -d mqtt" ]
+      test: [ "CMD-SHELL", "pg_isready -U app -d db" ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -263,13 +295,13 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      postgres-mqtt:
+      pvz-db:
         condition: service_healthy
     environment:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
 
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mqtt:5432/mqtt
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pvz-db:5432/db
       SPRING_DATASOURCE_USERNAME: app
       SPRING_DATASOURCE_PASSWORD: app
 
@@ -296,7 +328,4 @@ services:
 
 volumes:
   kafka-data:
-  postgres-data:
   postgres-data-rt:
-  minio-data:
-  pg-data:

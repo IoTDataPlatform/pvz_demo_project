@@ -24,14 +24,14 @@ public record DeviceStateResponse(
                 state.tenantId(),
                 state.lat(),
                 state.lon(),
-                state.h(),
-                state.t(),
-                state.tsHt(),
-                state.rssi() == null ? null : state.rssi().intValue(),
+                state.humidity(),
+                state.temperature(),
+                state.measurementTsMs(),
+                state.rssi(),
                 state.snr(),
-                state.bat(),
+                state.battery(),
                 state.online(),
-                state.tsState()
+                state.stateIngestedAt()
         );
     }
 }

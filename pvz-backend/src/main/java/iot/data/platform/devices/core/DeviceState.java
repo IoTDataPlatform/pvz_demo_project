@@ -6,13 +6,14 @@ public record DeviceState(
         String tenantId,
         Double lat,
         Double lon,
-        Double h,
-        Double t,
-        Long tsHt,
-        Long rssi,
+        Double humidity,
+        Double temperature,
+        Long measurementTsMs,
+        Integer rssi,
         Double snr,
-        Double bat,
+        Double battery,
         Boolean online,
-        Long tsState
+        Long stateIngestedAt,
+        Long enrichedProcessingTsMs
 ) {
 }

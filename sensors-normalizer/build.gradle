@@ -1,0 +1,34 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'miron.gaskov.sensors.normalizer'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven {
+        url = uri('https://packages.confluent.io/maven/')
+    }
+}
+
+dependencies {
+    implementation "org.apache.kafka:kafka-streams:3.7.1"
+    implementation "io.confluent:kafka-streams-avro-serde:7.7.1"
+    implementation "io.confluent:kafka-avro-serializer:7.7.1"
+    implementation 'org.apache.avro:avro:1.12.1'
+
+    implementation "org.slf4j:slf4j-api:2.0.13"
+    runtimeOnly "org.slf4j:slf4j-simple:2.0.13"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+
+application {
+    mainClass = 'miron.gaskov.sensors.normalizer.SensorNormalizerApp'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

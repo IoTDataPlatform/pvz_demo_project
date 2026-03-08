@@ -9,25 +9,56 @@ import hashlib
 
 import paho.mqtt.client as mqtt
 
+
+def parse_devices() -> list[str]:
+    devices_raw = os.getenv("DEVICES", "").strip()
+    if devices_raw:
+        return [x.strip() for x in devices_raw.split(",") if x.strip()]
+
+    device_count = int(os.getenv("DEVICE_COUNT", "5"))
+    if device_count <= 0:
+        raise ValueError("DEVICE_COUNT must be > 0")
+
+    device_prefix = os.getenv("DEVICE_PREFIX", "device-")
+    width = max(3, len(str(device_count)))
+
+    return [f"{device_prefix}{i:0{width}d}" for i in range(1, device_count + 1)]
+
+
+def device_location(device: str):
+    h = int(hashlib.sha1(device.encode()).hexdigest()[:8], 16)
+
+    lat_range = 0.01
+    lon_range = 0.02
+
+    lat_seed = (h % 65536) / 65535.0
+    lon_seed = ((h // 65536) % 65536) / 65535.0
+
+    lat_off = (lat_seed - 0.5) * lat_range
+    lon_off = (lon_seed - 0.5) * lon_range
+
+    lat = BASE_LAT + lat_off
+    lon = BASE_LON + lon_off
+
+    lat += random.gauss(0, 0.0001)
+    lon += random.gauss(0, 0.0001)
+
+    return lat, lon
+
+
 MQTT_HOST = os.getenv("MQTT_HOST", "mqtt-broker")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 
 ENVIRONMENTS = [x.strip() for x in os.getenv("ENVIRONMENTS", "dev").split(",") if x.strip()]
 TENANTS = [x.strip() for x in os.getenv("TENANTS", "tenant-a").split(",") if x.strip()]
 
-DEVICES = [
-    x.strip()
-    for x in os.getenv(
-        "DEVICES",
-        "device-001,device-002,device-003,device-004,device-005"
-    ).split(",")
-    if x.strip()
-]
+DEVICES = parse_devices()
 
 DRYNESS_LEVEL = float(os.getenv("DRYNESS_LEVEL", "0.0"))
 
 REALTIME_INTERVAL_SEC = float(os.getenv("REALTIME_INTERVAL_SEC", "60"))
 
+BACKFILL_ENABLED = os.getenv("BACKFILL_ENABLED", "true").lower() in ("1", "true", "yes")
 BACKFILL_FROM_YEAR = int(os.getenv("BACKFILL_FROM_YEAR", "2020"))
 BACKFILL_INTERVAL_SEC = float(os.getenv("BACKFILL_INTERVAL_SEC", "60"))
 
@@ -35,6 +66,8 @@ CLIENT_ID = os.getenv("CLIENT_ID", "sensor-emulator")
 
 BASE_LAT = float(os.getenv("BASE_LAT", "54.8433"))
 BASE_LON = float(os.getenv("BASE_LON", "83.0931"))
+
+USELESS_PAYLOAD_BYTES = int(os.getenv("USELESS_PAYLOAD_BYTES", "0"))
 
 MONTHLY_HUMIDITY = [
     88,  # Jan
@@ -60,10 +93,22 @@ print("REALTIME_INTERVAL_SEC:", REALTIME_INTERVAL_SEC)
 print("BACKFILL_FROM_YEAR:", BACKFILL_FROM_YEAR)
 print("BACKFILL_INTERVAL_SEC:", BACKFILL_INTERVAL_SEC)
 print("BASE_LAT / BASE_LON:", BASE_LAT, BASE_LON)
+print("USELESS_PAYLOAD_BYTES:", USELESS_PAYLOAD_BYTES)
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def iso_from_ms(ts_ms: int) -> str:
+    dt = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
+
 
 def _month_of_year(ts_ms: int) -> int:
     dt = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
     return dt.month
+
 
 def make_sensor_topic(env: str, tenant: str, device: str, suffix: str) -> str:
     return f"{env}/{tenant}/sensors/{device}/{suffix}"
@@ -71,6 +116,58 @@ def make_sensor_topic(env: str, tenant: str, device: str, suffix: str) -> str:
 
 def make_device_topic(env: str, tenant: str, device: str, suffix: str) -> str:
     return f"{env}/{tenant}/devices/{device}/{suffix}"
+
+
+def with_padding(payload: str) -> str:
+    if USELESS_PAYLOAD_BYTES <= 0:
+        return payload
+    return payload + "," + ("X" * USELESS_PAYLOAD_BYTES)
+
+
+class DeviceState:
+    def __init__(self, device_id: str):
+        self.id = device_id
+        self.seq = 0
+        self.humidity = 0.0
+        self.temperature = 0.0
+        self.rssi = -80
+        self.snr = 0.0
+        self.battery = 100.0
+        self.online = True
+        self.lat, self.lon = device_location(device_id)
+
+    def update(self, ts_ms: int):
+        self.seq += 1
+        self.temperature = seasonal_temperature(ts_ms)
+        self.humidity = seasonal_humidity(ts_ms)
+        self.rssi = random.randint(-100, -50)
+        self.snr = random.uniform(-10.0, 10.0)
+        self.battery = max(0.0, min(100.0, self.battery - random.uniform(0.0, 0.05)))
+        self.online = True
+        self.lat, self.lon = device_location(self.id)
+
+    def humidity_payload(self, ts_ms: int) -> str:
+        return with_padding(
+            f"{self.id},{iso_from_ms(ts_ms)},{self.humidity:.2f},{self.seq}"
+        )
+
+    def temperature_payload(self, ts_ms: int) -> str:
+        return with_padding(
+            f"{self.id},{iso_from_ms(ts_ms)},{self.temperature:.2f},{self.seq}"
+        )
+
+    def state_payload(self, ts_ms: int) -> str:
+        return with_padding(
+            f"{self.id},{iso_from_ms(ts_ms)},{self.rssi},{self.snr:.2f},{self.battery:.1f},{self.online}"
+        )
+
+    def location_payload(self, ts_ms: int) -> str:
+        return with_padding(
+            f"{self.id},{iso_from_ms(ts_ms)},{self.lat:.6f},{self.lon:.6f}"
+        )
+
+
+DEVICE_STATES = {device: DeviceState(device) for device in DEVICES}
 
 
 def on_connect(client, userdata, flags, reason_code, properties=None):
@@ -124,27 +221,6 @@ def connect_mqtt():
             time.sleep(3)
 
 
-def device_location(device: str):
-    h = int(hashlib.sha1(device.encode()).hexdigest()[:8], 16)
-
-    lat_range = 0.01
-    lon_range = 0.02
-
-    lat_seed = (h % 65536) / 65535.0
-    lon_seed = ((h // 65536) % 65536) / 65535.0
-
-    lat_off = (lat_seed - 0.5) * lat_range
-    lon_off = (lon_seed - 0.5) * lon_range
-
-    lat = BASE_LAT + lat_off
-    lon = BASE_LON + lon_off
-
-    lat += random.gauss(0, 0.0001)
-    lon += random.gauss(0, 0.0001)
-
-    return lat, lon
-
-
 def _day_of_year(ts_ms: int) -> int:
     dt = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
     return dt.timetuple().tm_yday
@@ -175,46 +251,23 @@ def seasonal_humidity(ts_ms: int) -> float:
 
 def publish_for_timestamp(ts_ms: int):
     for env, tenant, device in itertools.product(ENVIRONMENTS, TENANTS, DEVICES):
-        base = {"d": device, "ts": ts_ms}
-
-        temp = seasonal_temperature(ts_ms)
-        humidity = seasonal_humidity(ts_ms)
-
-        humidity_payload = dict(base)
-        humidity_payload["h"] = round(humidity, 1)
-        humidity_payload["t"] = round(temp, 1)
+        state = DEVICE_STATES[device]
+        state.update(ts_ms)
 
         humidity_topic = make_sensor_topic(env, tenant, device, "humidity")
-        client.publish(humidity_topic, json.dumps(humidity_payload), qos=0, retain=False)
+        client.publish(humidity_topic, state.humidity_payload(ts_ms), qos=0, retain=False)
 
-        lat, lon = device_location(device)
-
-        location_payload = dict(base)
-        location_payload["lat"] = round(lat, 6)
-        location_payload["lon"] = round(lon, 6)
+        temperature_topic = make_sensor_topic(env, tenant, device, "temperature")
+        client.publish(temperature_topic, state.temperature_payload(ts_ms), qos=0, retain=False)
 
         location_topic = make_sensor_topic(env, tenant, device, "location")
-        client.publish(location_topic, json.dumps(location_payload), qos=0, retain=False)
-
-        rssi = random.randint(-100, -50)
-        snr = round(random.uniform(-10.0, 10.0), 1)
-        bat = round(random.uniform(20.0, 100.0), 1)
-        online = True
-
-        state_payload = dict(base)
-        state_payload.update({
-            "rssi": rssi,
-            "snr": snr,
-            "bat": bat,
-            "online": online,
-        })
+        client.publish(location_topic, state.location_payload(ts_ms), qos=0, retain=False)
 
         state_topic = make_sensor_topic(env, tenant, device, "state")
-        client.publish(state_topic, json.dumps(state_payload), qos=0, retain=False)
+        client.publish(state_topic, state.state_payload(ts_ms), qos=0, retain=False)
 
 
 def backfill_history():
-    """Быстро заливаем историю с BACKFILL_FROM_YEAR до момента старта."""
     start_dt = datetime(BACKFILL_FROM_YEAR, 1, 1, tzinfo=timezone.utc)
     start_ms = int(start_dt.timestamp() * 1000)
     end_ms = int(time.time() * 1000)
@@ -223,8 +276,10 @@ def backfill_history():
     if step_ms <= 0:
         raise ValueError("BACKFILL_INTERVAL_SEC must be > 0")
 
-    print(f"Starting backfill from {start_dt.isoformat()} to current time, "
-          f"step = {BACKFILL_INTERVAL_SEC} sec")
+    print(
+        f"Starting backfill from {start_dt.isoformat()} to current time, "
+        f"step = {BACKFILL_INTERVAL_SEC} sec"
+    )
 
     ts_ms = start_ms
     batch = 0
@@ -240,7 +295,10 @@ def backfill_history():
 
 
 def publish_loop():
-    backfill_history()
+    if BACKFILL_ENABLED:
+        backfill_history()
+    else:
+        print("Backfill disabled")
 
     print("Switching to realtime mode, interval =", REALTIME_INTERVAL_SEC, "sec")
 

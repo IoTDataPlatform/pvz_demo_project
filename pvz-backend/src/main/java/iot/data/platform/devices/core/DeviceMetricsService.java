@@ -2,7 +2,7 @@ package iot.data.platform.devices.core;
 
 import iot.data.platform.devices.api.DeviceMetricsPointResponse;
 import iot.data.platform.devices.api.DeviceMetricsResponse;
-import iot.data.platform.devices.infra.DeviceMeasurementRepository;
+import iot.data.platform.devices.infra.SensorEnrichedRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -12,9 +12,9 @@ import java.util.List;
 @Service
 public class DeviceMetricsService {
 
-    private final DeviceMeasurementRepository repository;
+    private final SensorEnrichedRepository repository;
 
-    public DeviceMetricsService(DeviceMeasurementRepository repository) {
+    public DeviceMetricsService(SensorEnrichedRepository repository) {
         this.repository = repository;
     }
 

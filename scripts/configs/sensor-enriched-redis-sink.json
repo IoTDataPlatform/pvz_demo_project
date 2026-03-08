@@ -1,9 +1,9 @@
 {
-  "name": "mqtt-enriched-redis-sink",
+  "name": "sensor-enriched-redis-sink",
   "config": {
     "connector.class": "com.redis.kafka.connect.RedisSinkConnector",
     "tasks.max": "1",
-    "topics": "mqtt_enriched",
+    "topics": "sensor.enriched.v1",
 
     "redis.uri": "redis://redis:6379",
     "redis.type": "HASH",

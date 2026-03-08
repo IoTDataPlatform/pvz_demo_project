@@ -7,9 +7,11 @@ import iot.data.platform.devices.core.DeviceState;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SetOperations;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +31,7 @@ public class RedisDeviceRepository {
         String pattern = String.format("pvz:%s:%s:device:*:state", env, tenantId);
         Set<String> stateKeys = redisTemplate.keys(pattern);
 
-        if (stateKeys.isEmpty()) {
+        if (stateKeys == null || stateKeys.isEmpty()) {
             return List.of();
         }
 
@@ -63,7 +65,7 @@ public class RedisDeviceRepository {
         } catch (DataAccessException e) {
             return null;
         }
-        if (map.isEmpty()) return null;
+        if (map == null || map.isEmpty()) return null;
 
         return new DeviceState(
                 deviceId,
@@ -71,29 +73,16 @@ public class RedisDeviceRepository {
                 tenantId,
                 parseDoubleOrNull(map.get("lat")),
                 parseDoubleOrNull(map.get("lon")),
-                parseDoubleOrNull(map.get("h")),
-                parseDoubleOrNull(map.get("t")),
-                parseLongOrNull(map.get("ts_ht")),
-                parseLongOrNull(map.get("rssi")),
+                parseDoubleOrNull(map.get("humidity")),
+                parseDoubleOrNull(map.get("temperature")),
+                parseTimestampMillisOrNull(map.get("measurement_event_ts")),
+                parseIntOrNull(map.get("rssi")),
                 parseDoubleOrNull(map.get("snr")),
-                parseDoubleOrNull(map.get("bat")),
+                parseDoubleOrNull(map.get("battery")),
                 parseBoolOrNull(map.get("online")),
-                parseLongOrNull(map.get("ts_state"))
+                parseLongOrNull(map.get("state_ingested_at")),
+                parseLongOrNull(map.get("enriched_processing_ts_ms"))
         );
-    }
-
-    private Long parseLongOrNull(String v) {
-        if (v == null || v.isBlank()) return null;
-        try { return Long.parseLong(v); } catch (NumberFormatException e) { return null; }
-    }
-
-    private Boolean parseBoolOrNull(String v) {
-        if (v == null || v.isBlank()) return null;
-        return switch (v.toLowerCase()) {
-            case "1","true","yes","on" -> true;
-            case "0","false","no","off" -> false;
-            default -> null;
-        };
     }
 
     public RecentSummaryResponse findRecentSummary(String env, String tenantId) {
@@ -106,7 +95,9 @@ public class RedisDeviceRepository {
             return emptySummary(env, tenantId);
         }
 
-        return map.isEmpty() ? emptySummary(env, tenantId) : new RecentSummaryResponse(
+        return map == null || map.isEmpty()
+                ? emptySummary(env, tenantId)
+                : new RecentSummaryResponse(
                 env,
                 tenantId,
                 600,
@@ -127,24 +118,29 @@ public class RedisDeviceRepository {
         } catch (DataAccessException e) {
             return null;
         }
-        if (map.isEmpty()) return null;
+        if (map == null || map.isEmpty()) return null;
 
         Double threshold = parseDoubleOrNull(map.get("threshold"));
-        Long lastTs = parseLongOrNull(map.get("last_ts"));
-        Long lastOkTs = parseLongOrNull(map.get("last_ok_ts"));
+        Long lastTs = parseTimestampMillisOrNull(map.get("last_event_ts"));
+        Long lastOkTs = parseTimestampMillisOrNull(map.get("last_ok_event_ts"));
         Double streakDays = parseDoubleOrNull(map.get("streak_days"));
-        Double lastH = parseDoubleOrNull(map.get("last_h"));
+        Double lastH = parseDoubleOrNull(map.get("last_humidity"));
 
         return new DroughtStreakResponse(
-                env, tenantId, deviceId,
-                threshold, lastTs, lastOkTs,
-                streakDays, lastH
+                env,
+                tenantId,
+                deviceId,
+                threshold,
+                lastTs,
+                lastOkTs,
+                streakDays,
+                lastH
         );
     }
 
     public DroughtSummaryResponse findDroughtSummary(String env, String tenantId) {
         Set<String> keys = redisTemplate.keys(RedisKeys.deviceHumidityLowStreakPattern(env, tenantId));
-        if (keys.isEmpty()) {
+        if (keys == null || keys.isEmpty()) {
             return new DroughtSummaryResponse(env, tenantId, null, 0, 0.0, null);
         }
 
@@ -160,9 +156,11 @@ public class RedisDeviceRepository {
             } catch (DataAccessException e) {
                 continue;
             }
-            if (map.isEmpty()) continue;
+            if (map == null || map.isEmpty()) continue;
 
-            if (threshold == null) threshold = parseDoubleOrNull(map.get("threshold"));
+            if (threshold == null) {
+                threshold = parseDoubleOrNull(map.get("threshold"));
+            }
 
             Double days = parseDoubleOrNull(map.get("streak_days"));
             if (days == null) continue;
@@ -207,6 +205,24 @@ public class RedisDeviceRepository {
         }
     }
 
+    private Integer parseIntOrNull(String v) {
+        if (v == null || v.isBlank()) return null;
+        try {
+            return Integer.parseInt(v);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Long parseLongOrNull(String v) {
+        if (v == null || v.isBlank()) return null;
+        try {
+            return Long.parseLong(v);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private Double parseDoubleOrNull(String v) {
         if (v == null || v.isBlank()) return null;
         try {
@@ -214,5 +230,36 @@ public class RedisDeviceRepository {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private Boolean parseBoolOrNull(String v) {
+        if (v == null || v.isBlank()) return null;
+        return switch (v.toLowerCase()) {
+            case "1", "true", "yes", "on" -> true;
+            case "0", "false", "no", "off" -> false;
+            default -> null;
+        };
+    }
+
+    private Long parseTimestampMillisOrNull(String v) {
+        if (v == null || v.isBlank()) return null;
+
+        try {
+            long n = Long.parseLong(v);
+            return n < 10_000_000_000L ? n * 1000 : n;
+        } catch (NumberFormatException ignored) {
+        }
+
+        try {
+            return Instant.parse(v).toEpochMilli();
+        } catch (Exception ignored) {
+        }
+
+        try {
+            return LocalDateTime.parse(v).toInstant(ZoneOffset.UTC).toEpochMilli();
+        } catch (Exception ignored) {
+        }
+
+        return null;
     }
 }

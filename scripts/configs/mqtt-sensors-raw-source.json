@@ -1,0 +1,23 @@
+{
+  "name": "mqtt-sensors-raw-source",
+  "config": {
+    "connector.class": "com.datamountaineer.streamreactor.connect.mqtt.source.MqttSourceConnector",
+    "tasks.max": "1",
+
+    "connect.mqtt.hosts": "tcp://mqtt-broker:1883",
+    "connect.mqtt.client.id": "mqtt-sensors-raw-source-1",
+
+    "connect.mqtt.connection.clean": "true",
+    "connect.mqtt.connection.timeout": "3000",
+    "connect.mqtt.connection.keep.alive": "1000",
+    "connect.mqtt.service.quality": "1",
+    "connect.mqtt.converter.throw.on.error": "true",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+
+    "connect.mqtt.kcql": "INSERT INTO mqtt_humidity_raw SELECT * FROM +/+/sensors/+/humidity;INSERT INTO mqtt_temperature_raw SELECT * FROM +/+/sensors/+/temperature;INSERT INTO mqtt_location_raw SELECT * FROM +/+/sensors/+/location;INSERT INTO mqtt_state_raw SELECT * FROM +/+/sensors/+/state"
+  }
+}
