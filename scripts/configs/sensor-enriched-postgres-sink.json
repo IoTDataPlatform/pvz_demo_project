@@ -1,31 +1,30 @@
 {
-  "name": "sensor-enriched-redis-sink",
+  "name": "sensor-enriched-postgres-sink",
   "config": {
-    "connector.class": "com.redis.kafka.connect.RedisSinkConnector",
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
     "tasks.max": "1",
+
     "topics": "sensor.enriched.v1",
 
-    "redis.uri": "redis://redis:6379",
-    "redis.type": "HASH",
-    "redis.keyspace": "",
-    "redis.key.ttl": "600",
+    "connection.url": "jdbc:postgresql://pvz-db:5432/db",
+    "connection.user": "app",
+    "connection.password": "app",
+
+    "auto.create": "false",
+    "auto.evolve": "false",
+
+    "insert.mode": "insert",
+    "pk.mode": "none",
+
+    "table.name.format": "sensor_enriched",
+
+    "batch.size": "1000",
 
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
     "key.converter.schemas.enable": "false",
 
     "value.converter": "io.confluent.connect.avro.AvroConverter",
     "value.converter.schema.registry.url": "http://kafka-schema-registry:8081",
-    "value.converter.schemas.enable": "true",
-
-    "transforms": "InsertMeta,ValueToKey,ExtractFieldKey",
-    "transforms.InsertMeta.type": "org.apache.kafka.connect.transforms.InsertField$Value",
-    "transforms.InsertMeta.timestamp.field": "kafka_record_ts",
-    "transforms.InsertMeta.partition.field": "kafka_partition",
-    "transforms.InsertMeta.offset.field": "kafka_offset",
-
-    "transforms.ValueToKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
-    "transforms.ValueToKey.fields": "redis_key",
-    "transforms.ExtractFieldKey.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
-    "transforms.ExtractFieldKey.field": "redis_key"
+    "value.converter.schemas.enable": "true"
   }
 }
