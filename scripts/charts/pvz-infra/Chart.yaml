@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pvz-infra
+description: PVZ hybrid infra for local Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

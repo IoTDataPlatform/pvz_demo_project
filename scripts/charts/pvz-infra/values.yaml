@@ -1,0 +1,79 @@
+nameOverride: ""
+fullnameOverride: ""
+
+namespaceOverride: ""
+
+images:
+  kafka: confluentinc/cp-kafka:8.1.0
+  schemaRegistry: confluentinc/cp-schema-registry:8.1.0
+  connect: confluentinc/cp-kafka-connect:8.1.0
+  kafkaUi: kafbat/kafka-ui:latest
+  redis: redis:7.4
+  postgres: timescale/timescaledb:latest-pg16
+  flink: flink:1.19.1-java17
+  sensorNormalizer: sensor-normalizer:latest
+  curl: curlimages/curl:8.10.1
+
+servicePorts:
+  kafkaInternal: 9092
+  kafkaExternal: 9094
+  schemaRegistry: 8081
+  connect: 8083
+  kafkaUi: 8080
+  redis: 6379
+  postgresService: 5432
+  postgresHost: 5430
+  flinkUiHost: 8180
+  flinkUiContainer: 8081
+
+hostPaths:
+  projectRoot: "/ABSOLUTE/PATH/TO/YOUR/PROJECT"
+  connectPlugins: "/ABSOLUTE/PATH/TO/YOUR/PROJECT/scripts/connect-plugins"
+  connectorConfigs: "/ABSOLUTE/PATH/TO/YOUR/PROJECT/scripts/configs"
+  flinkLib: "/ABSOLUTE/PATH/TO/YOUR/PROJECT/scripts/flink-lib"
+  flinkSql: "/ABSOLUTE/PATH/TO/YOUR/PROJECT/scripts/flink-sql"
+  dbInit: "/ABSOLUTE/PATH/TO/YOUR/PROJECT/scripts/db-init"
+
+kafka:
+  clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
+  logDirs: "/var/lib/kafka/data"
+
+schemaRegistry:
+  enabled: true
+
+connect:
+  enabled: true
+  groupId: "connect-cluster"
+  pluginPath: "/usr/share/confluent-hub-components"
+
+kafkaUi:
+  enabled: true
+
+redis:
+  enabled: true
+
+postgres:
+  enabled: true
+  db: db
+  user: app
+  password: app
+  dataDir: /var/lib/postgresql/data
+
+sensorNormalizer:
+  enabled: true
+  applicationId: sensor-normalizer
+  topics:
+    humidityRaw: mqtt_humidity_raw
+    temperatureRaw: mqtt_temperature_raw
+    locationRaw: mqtt_location_raw
+    stateRaw: mqtt_state_raw
+    humidityOut: sensor.humidity.v1
+    temperatureOut: sensor.temperature.v1
+    locationOut: sensor.location.v1
+    stateOut: sensor.state.v1
+    parseErrors: sensor.parse.errors
+
+flink:
+  enabled: true
+  taskSlots: 4
+  parallelism: 1

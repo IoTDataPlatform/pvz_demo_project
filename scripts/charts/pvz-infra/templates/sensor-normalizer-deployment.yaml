@@ -1,0 +1,50 @@
+{{- if .Values.sensorNormalizer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pvz-infra.fullname" . }}-sensor-normalizer
+  labels:
+    {{- include "pvz-infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sensor-normalizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: sensor-normalizer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: sensor-normalizer
+    spec:
+      containers:
+        - name: sensor-normalizer
+          image: {{ .Values.images.sensorNormalizer }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: "{{ include "pvz-infra.fullname" . }}-kafka:9092"
+            - name: SCHEMA_REGISTRY_URL
+              value: "http://{{ include "pvz-infra.fullname" . }}-schema-registry:8081"
+            - name: APPLICATION_ID
+              value: {{ .Values.sensorNormalizer.applicationId | quote }}
+            - name: TOPIC_HUMIDITY_RAW
+              value: {{ .Values.sensorNormalizer.topics.humidityRaw | quote }}
+            - name: TOPIC_TEMPERATURE_RAW
+              value: {{ .Values.sensorNormalizer.topics.temperatureRaw | quote }}
+            - name: TOPIC_LOCATION_RAW
+              value: {{ .Values.sensorNormalizer.topics.locationRaw | quote }}
+            - name: TOPIC_STATE_RAW
+              value: {{ .Values.sensorNormalizer.topics.stateRaw | quote }}
+            - name: TOPIC_HUMIDITY_OUT
+              value: {{ .Values.sensorNormalizer.topics.humidityOut | quote }}
+            - name: TOPIC_TEMPERATURE_OUT
+              value: {{ .Values.sensorNormalizer.topics.temperatureOut | quote }}
+            - name: TOPIC_LOCATION_OUT
+              value: {{ .Values.sensorNormalizer.topics.locationOut | quote }}
+            - name: TOPIC_STATE_OUT
+              value: {{ .Values.sensorNormalizer.topics.stateOut | quote }}
+            - name: TOPIC_PARSE_ERRORS
+              value: {{ .Values.sensorNormalizer.topics.parseErrors | quote }}
+{{- end }}

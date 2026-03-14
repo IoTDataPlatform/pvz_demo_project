@@ -1,0 +1,109 @@
+{{- if .Values.flink.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pvz-infra.fullname" . }}-flink-jobmanager
+  labels:
+    {{- include "pvz-infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flink-jobmanager
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: flink-jobmanager
+  ports:
+    - name: ui
+      port: {{ .Values.servicePorts.flinkUiContainer }}
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pvz-infra.fullname" . }}-flink-jobmanager
+  labels:
+    {{- include "pvz-infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flink-jobmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: flink-jobmanager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: flink-jobmanager
+    spec:
+      containers:
+        - name: flink-jobmanager
+          image: {{ .Values.images.flink }}
+          imagePullPolicy: IfNotPresent
+          command: [ "/docker-entrypoint.sh" ]
+          args: [ "jobmanager" ]
+          ports:
+            - containerPort: 8081
+              hostPort: {{ .Values.servicePorts.flinkUiHost }}
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: {{ include "pvz-infra.fullname" . }}-flink-jobmanager
+                rest.port: 8081
+                taskmanager.numberOfTaskSlots: {{ .Values.flink.taskSlots }}
+                parallelism.default: {{ .Values.flink.parallelism }}
+          volumeMounts:
+            - name: flink-lib
+              mountPath: /opt/flink/usrlib
+              readOnly: true
+            - name: flink-sql
+              mountPath: /opt/flink/sql
+              readOnly: true
+      volumes:
+        - name: flink-lib
+          hostPath:
+            path: {{ .Values.hostPaths.flinkLib | quote }}
+            type: Directory
+        - name: flink-sql
+          hostPath:
+            path: {{ .Values.hostPaths.flinkSql | quote }}
+            type: Directory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pvz-infra.fullname" . }}-flink-taskmanager
+  labels:
+    {{- include "pvz-infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flink-taskmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: flink-taskmanager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: flink-taskmanager
+    spec:
+      containers:
+        - name: flink-taskmanager
+          image: {{ .Values.images.flink }}
+          imagePullPolicy: IfNotPresent
+          command: [ "/docker-entrypoint.sh" ]
+          args: [ "taskmanager" ]
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: {{ include "pvz-infra.fullname" . }}-flink-jobmanager
+                taskmanager.numberOfTaskSlots: {{ .Values.flink.taskSlots }}
+          volumeMounts:
+            - name: flink-lib
+              mountPath: /opt/flink/usrlib
+              readOnly: true
+      volumes:
+        - name: flink-lib
+          hostPath:
+            path: {{ .Values.hostPaths.flinkLib | quote }}
+            type: Directory
+{{- end }}

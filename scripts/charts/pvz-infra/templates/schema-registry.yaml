@@ -1,0 +1,57 @@
+{{- if .Values.schemaRegistry.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pvz-infra.fullname" . }}-schema-registry
+  labels:
+    {{- include "pvz-infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: schema-registry
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: schema-registry
+  ports:
+    - name: http
+      port: {{ .Values.servicePorts.schemaRegistry }}
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pvz-infra.fullname" . }}-schema-registry
+  labels:
+    {{- include "pvz-infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: schema-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: schema-registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: schema-registry
+    spec:
+      containers:
+        - name: schema-registry
+          image: {{ .Values.images.schemaRegistry }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              hostPort: {{ .Values.servicePorts.schemaRegistry }}
+          env:
+            - name: SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS
+              value: "PLAINTEXT://{{ include "pvz-infra.fullname" . }}-kafka:9092"
+            - name: SCHEMA_REGISTRY_LISTENERS
+              value: "http://0.0.0.0:8081"
+            - name: SCHEMA_REGISTRY_HOST_NAME
+              value: "{{ include "pvz-infra.fullname" . }}-schema-registry"
+          readinessProbe:
+            httpGet:
+              path: /subjects
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 5
+{{- end }}
