@@ -22,14 +22,14 @@ services:
       MQTT_PORT: 1883
       ENVIRONMENTS: "prod"
       TENANTS: "tenant-1"
-      DEVICE_COUNT: 10
-      DEVICE_PREFIX: "device-"
+      DEVICE_COUNT: ${DEVICE_COUNT:-100}
+      DEVICE_PREFIX: ${DEVICE_PREFIX:-device-}
       BACKFILL_ENABLED: "false"
       # BACKFILL_FROM_YEAR: 2021
       # BACKFILL_INTERVAL_SEC: 3600
-      REALTIME_INTERVAL_SEC: 15
+      REALTIME_INTERVAL_SEC: 1
       DRYNESS_LEVEL: 36
-      # USELESS_PAYLOAD_BYTES: 0
+      USELESS_PAYLOAD_BYTES: ${USELESS_PAYLOAD_BYTES:-0}
     restart: unless-stopped
 
   mqttx-web:

@@ -15,7 +15,7 @@ CREATE TABLE sensor_humidity
     sourceTopic STRING,
 
     event_ts AS CAST(REPLACE(REPLACE(eventTime, 'T', ' '), 'Z', '') AS TIMESTAMP(3)),
-    WATERMARK FOR event_ts AS event_ts - INTERVAL '5' SECOND
+    WATERMARK FOR event_ts AS event_ts - INTERVAL '0.2' SECOND
 ) WITH (
       'connector' = 'kafka',
       'topic' = 'sensor.humidity.v1',
@@ -36,7 +36,7 @@ CREATE TABLE sensor_temperature
     sourceTopic STRING,
 
     event_ts AS CAST(REPLACE(REPLACE(eventTime, 'T', ' '), 'Z', '') AS TIMESTAMP(3)),
-    WATERMARK FOR event_ts AS event_ts - INTERVAL '5' SECOND
+    WATERMARK FOR event_ts AS event_ts - INTERVAL '0.2' SECOND
 ) WITH (
       'connector' = 'kafka',
       'topic' = 'sensor.temperature.v1',
@@ -68,7 +68,7 @@ CREATE TABLE sensor_measurement
     measurement_event_ts         TIMESTAMP(3),
     measurement_processing_ts_ms BIGINT,
 
-    WATERMARK FOR measurement_event_ts AS measurement_event_ts - INTERVAL '5' SECOND
+    WATERMARK FOR measurement_event_ts AS measurement_event_ts - INTERVAL '0.2' SECOND
 ) WITH (
       'connector' = 'kafka',
       'topic' = 'sensor.measurement.v1',

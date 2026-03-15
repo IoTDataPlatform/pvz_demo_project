@@ -99,7 +99,7 @@ stack-up:
 	$(COMPOSE) $(DOCKER_COMPOSE_BASE) up -d --build
 
 stack-down:
-	$(COMPOSE) $(DOCKER_COMPOSE_BASE) down
+	$(COMPOSE) $(DOCKER_COMPOSE_BASE) down -v
 
 emulator-up:
 	$(COMPOSE) $(DOCKER_COMPOSE_BASE) up -d mqtt-emulator
