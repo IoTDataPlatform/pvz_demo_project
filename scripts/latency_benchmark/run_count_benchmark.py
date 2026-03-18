@@ -17,12 +17,12 @@ PG_DB = "db"
 PG_USER = "app"
 PG_PASSWORD = "app"
 
-DEVICE_COUNTS = [10, 20, 30, 40, 50, 60, 70]
+DEVICE_COUNTS = [40, 80, 120, 160, 200, 240, 280]
 REALTIME_INTERVAL_SEC = 1
 USELESS_PAYLOAD_BYTES = 0
-RUN_SECONDS = 300
+RUN_SECONDS = 600
 
-RESULTS_CSV = OUTPUT_DIR / "count_benchmark_metrics.csv"
+RESULTS_CSV = OUTPUT_DIR / "benchmark.csv"
 
 
 def p(series: pd.Series, q: float) -> float:
